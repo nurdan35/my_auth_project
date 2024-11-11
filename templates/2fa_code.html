@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Authentication - Enter Code</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='2fa_code.css') }}">
+</head>
+<body>
+    <h1>Two-Factor Authentication</h1>
+    <p>Please enter the code from your authenticator app:</p>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('two_factor_auth_code') }}" method="post">
+        <label for="otp">Authentication Code:</label>
+        <input type="text" id="otp" name="otp" required>
+        <button type="submit">Next</button>
+    </form>
+</body>
+</html>
