@@ -3,9 +3,10 @@ import sqlite3
 import pyotp
 import qrcode
 from io import BytesIO
+import bcrypt
 
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'  # Güvenlik için secret key
+app.secret_key = 'supersecretkey'
 
 
 def get_db_connection():
@@ -14,13 +15,17 @@ def get_db_connection():
     return conn
 
 
-# Home page - Shows blog posts
 @app.route('/')
 def index():
     conn = get_db_connection()
     blogs = conn.execute('SELECT * FROM blogs').fetchall()
     conn.close()
+
+    if 'user_id' not in session:
+        flash("You need to log in to view the blog posts.")
+        return render_template('index.html', blogs=None)
     return render_template('index.html', blogs=blogs)
+
 
 
 # Add new blog post page
@@ -69,42 +74,44 @@ def add_comment(blog_id):
 def register():
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form['password']
+        password = request.form['password'].encode('utf-8')
         email = request.form['email']
 
+        # Hash the password
+        hashed_pw = bcrypt.hashpw(password, bcrypt.gensalt())
+
         conn = get_db_connection()
-        existing_user = conn.execute('SELECT * FROM users WHERE username = ? OR email = ?', (username, email)).fetchone()
-        if existing_user:
-            flash("Username or email already exists. Please try a different one.")
+        try:
+            conn.execute("INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+                         (username, hashed_pw, email))
+            conn.commit()
+            flash("Registration successful! Please log in.")
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            flash("Username or email already exists.")
+        finally:
             conn.close()
-            return render_template('register.html')
-
-        conn.execute('INSERT INTO users (username, password, email) VALUES (?, ?, ?)', (username, password, email))
-        conn.commit()
-        conn.close()
-
-        flash("Registration successful! Please log in.")
-        return redirect(url_for('login'))
     return render_template('register.html')
-
 
 # Login page
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form['password']
+        password = request.form['password'].encode('utf-8')  # Plain password in bytes format
 
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password)).fetchone()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         conn.close()
 
-        if user:
+        # If password in the database is stored as bytes, remove `.encode('utf-8')`
+        if user and bcrypt.checkpw(password, user['password']):
             session['user_id'] = user['id']
             return redirect(url_for('two_factor_auth'))
         else:
             flash("Invalid username or password")
     return render_template('login.html')
+
 
 
 # 2FA route
@@ -130,7 +137,7 @@ def two_factor_auth():
         otp = request.form['otp']
         print("Entered OTP:", otp)  # Check the entered OTP
         print("Expected OTP:", pyotp.TOTP(otp_secret).now())  # OTP expected by the server
-        if pyotp.TOTP(otp_secret).verify(otp):
+        if pyotp.TOTP(otp_secret).verify(otp, valid_window=1):
             session['authenticated'] = True
             flash("Two-factor authentication successful!")
             return redirect(url_for('index'))
@@ -164,8 +171,8 @@ def generate_qr():
 @app.route('/logout')
 def logout():
     session.clear()
-    flash("You have been logged out.")
-    return redirect(url_for('login'))
+    flash("Logged out successfully.")
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
