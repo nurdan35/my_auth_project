@@ -73,6 +73,12 @@ def register():
         email = request.form['email']
 
         conn = get_db_connection()
+        existing_user = conn.execute('SELECT * FROM users WHERE username = ? OR email = ?', (username, email)).fetchone()
+        if existing_user:
+            flash("Username or email already exists. Please try a different one.")
+            conn.close()
+            return render_template('register.html')
+
         conn.execute('INSERT INTO users (username, password, email) VALUES (?, ?, ?)', (username, password, email))
         conn.commit()
         conn.close()
@@ -129,7 +135,20 @@ def two_factor_auth():
         else:
             flash("Invalid OTP. Please try again.")
 
-    # Generate QR code for 2FA
+    return render_template('2fa.html')
+
+
+# QR Code Generation Endpoint for 2FA
+@app.route('/2fa_qr')
+def generate_qr():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    conn.close()
+
+    otp_secret = user['otp_secret']
     otp_uri = pyotp.TOTP(otp_secret).provisioning_uri(name=user['username'], issuer_name="MyApp")
     qr_img = qrcode.make(otp_uri)
     buffer = BytesIO()
