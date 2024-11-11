@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../static/blog.css">
+
+</head>
+<body>
+    <header>
+        <a href="{{ url_for('index') }}">Home</a>
+        <a href="{{ url_for('add_blog') }}">Add Blog</a>
+    </header>
+
+    <h1>{{ blog['title'] }}</h1>
+
+    <div class="blog-content">
+        <h2>{{ blog['title'] }}</h2>
+        <p>{{ blog['content'] | safe }}</p> <!-- Safe filter allows HTML to render -->
+        <small>Author ID: {{ blog['author_id'] }}</small>
+        <script>alert("XSS Test");</script>
+    </div>
+
+    <h2>Comments</h2>
+    <ul>
+        {% for comment in comments %}
+            <li>{{ comment['comment_text'] | safe }}</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Add Comment</h3>
+    <form action="{{ url_for('add_comment', blog_id=blog['id']) }}" method="post">
+        <textarea name="comment" required></textarea><br>
+        <button type="submit">Submit</button>
+    </form>
+</body>
+</html>
