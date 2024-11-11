@@ -20,6 +20,10 @@ def index():
     conn = get_db_connection()
     blogs = conn.execute('SELECT * FROM blogs').fetchall()
     conn.close()
+
+    if 'user_id' not in session:
+        flash("You need to log in to view the blog posts.")
+        return render_template('index.html', blogs=None)
     return render_template('index.html', blogs=blogs)
 
 
@@ -105,6 +109,9 @@ def register():
         password = request.form['password']
         email = request.form['email']
 
+        # Hash the password
+        hashed_pw = bcrypt.hashpw(password, bcrypt.gensalt())
+
         conn = get_db_connection()
         existing_user = conn.execute('SELECT * FROM users WHERE username = ? OR email = ?', (username, email)).fetchone()
         if existing_user:
@@ -112,17 +119,12 @@ def register():
             conn.close()
             return render_template('register.html')
 
-        # Yeni kullanıcıyı ekle
         conn.execute('INSERT INTO users (username, password, email) VALUES (?, ?, ?)', (username, password, email))
         conn.commit()
-
-        # Kullanıcı bilgilerini çek ve QR sayfasına yönlendir
-        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        session['user_id'] = user['id']
-
         conn.close()
 
-        return redirect(url_for('two_factor_auth_qr'))
+        flash("Registration successful! Please log in.")
+        return redirect(url_for('login'))
     return render_template('register.html')
 
 
@@ -185,19 +187,17 @@ def generate_qr():
     otp_uri = pyotp.TOTP(otp_secret).provisioning_uri(name=user['username'], issuer_name="MyApp")
     qr_img = qrcode.make(otp_uri)
     buffer = BytesIO()
-    qr_img.save(buffer, format="PNG")
+    qr_img.save(buffer)
     buffer.seek(0)
     return send_file(buffer, mimetype="image/png")
-
-
 
 
 # Logout
 @app.route('/logout')
 def logout():
     session.clear()
-    flash("You have been logged out.")
-    return redirect(url_for('login'))
+    flash("Logged out successfully.")
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':

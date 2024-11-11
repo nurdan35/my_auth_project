@@ -15,15 +15,14 @@
 
     <div class="blog-content">
         <h2>{{ blog['title'] }}</h2>
-        <p>{{ blog['content'] | safe }}</p> <!-- Safe filter allows HTML to render -->
+        <p>{{ blog['content']}}</p>
         <small>Author ID: {{ blog['author_id'] }}</small>
-        <script>alert("XSS Test");</script>
     </div>
 
     <h2>Comments</h2>
     <ul>
         {% for comment in comments %}
-            <li>{{ comment['comment_text'] | safe }}</li>
+            <li>{{ comment['comment_text']}}</li>
         {% endfor %}
     </ul>
 
