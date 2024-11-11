@@ -29,7 +29,7 @@ def init_db():
 
     # `comments` tablosu
     conn.execute('''CREATE TABLE IF NOT EXISTS comments (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,:w
                         blog_id INTEGER NOT NULL,
                         comment_text TEXT NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

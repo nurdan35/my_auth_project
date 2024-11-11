@@ -1,5 +1,6 @@
 import sqlite3
 
+
 def init_db():
     # Open a connection to the SQLite database
     conn = sqlite3.connect('database.db')
