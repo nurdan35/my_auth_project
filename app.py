@@ -3,9 +3,10 @@ import sqlite3
 import pyotp
 import qrcode
 from io import BytesIO
+import bcrypt
 
 app = Flask(__name__)
-app.secret_key = 'supersecretkey'  # Güvenlik için secret key
+app.secret_key = 'supersecretkey'
 
 
 def get_db_connection():
@@ -106,10 +107,10 @@ def two_factor_auth_qr():
 def register():
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form['password']
+        password = request.form['password'].encode('utf-8')
         email = request.form['email']
 
-        # Hash the password
+        # Şifreyi hashle
         hashed_pw = bcrypt.hashpw(password, bcrypt.gensalt())
 
         conn = get_db_connection()
@@ -119,12 +120,24 @@ def register():
             conn.close()
             return render_template('register.html')
 
-        conn.execute('INSERT INTO users (username, password, email) VALUES (?, ?, ?)', (username, password, email))
-        conn.commit()
-        conn.close()
+        try:
+            # Kullanıcıyı veritabanına ekle
+            conn.execute("INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+                         (username, hashed_pw, email))
+            conn.commit()
 
-        flash("Registration successful! Please log in.")
-        return redirect(url_for('login'))
+            # Kullanıcıyı session'a ekleyerek oturum başlatın
+            user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+            session['user_id'] = user['id']  # Kullanıcı oturum açtı olarak ayarlanır
+
+            flash("Registration successful! Please scan the QR code for two-factor authentication.")
+            return redirect(url_for('two_factor_auth_qr'))  # Kayıttan sonra QR kodlu 2FA sayfasına yönlendirme
+
+        except sqlite3.IntegrityError:
+            flash("Username or email already exists.")
+        finally:
+            conn.close()
+
     return render_template('register.html')
 
 
@@ -143,7 +156,7 @@ def two_factor_auth_code():
 
     if request.method == 'POST':
         otp = request.form['otp']
-        if pyotp.TOTP(otp_secret).verify(otp):
+        if pyotp.TOTP(otp_secret).verify(otp, valid_window=1):
             session['authenticated'] = True
             flash("Two-factor authentication successful!")
             return redirect(url_for('index'))
@@ -158,13 +171,13 @@ def two_factor_auth_code():
 def login():
     if request.method == 'POST':
         username = request.form['username']
-        password = request.form['password']
+        password = request.form['password'].encode('utf-8')  # Plain password in bytes format
 
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password)).fetchone()
+        user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         conn.close()
 
-        if user:
+        if user and bcrypt.checkpw(password, user['password']):
             session['user_id'] = user['id']
             return redirect(url_for('two_factor_auth_code'))  # Giriş sonrası 2FA kod sayfasına yönlendirme
         else:
@@ -187,16 +200,18 @@ def generate_qr():
     otp_uri = pyotp.TOTP(otp_secret).provisioning_uri(name=user['username'], issuer_name="MyApp")
     qr_img = qrcode.make(otp_uri)
     buffer = BytesIO()
-    qr_img.save(buffer)
+    qr_img.save(buffer, format="PNG")
     buffer.seek(0)
     return send_file(buffer, mimetype="image/png")
+
+
 
 
 # Logout
 @app.route('/logout')
 def logout():
     session.clear()
-    flash("Logged out successfully.")
+    flash("You have been logged out.")
     return redirect(url_for('index'))
 
 

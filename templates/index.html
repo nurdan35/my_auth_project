@@ -8,7 +8,6 @@
 <body>
     <header>
         <a href="{{ url_for('index') }}">Home</a>
-        <a href="{{ url_for('add_blog') }}">Add Blog</a>
 
         {% if 'user_id' in session %}
             <a href="{{ url_for('add_blog') }}">Add Blog</a>
