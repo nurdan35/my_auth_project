@@ -128,12 +128,15 @@ def two_factor_auth():
 
     if request.method == 'POST':
         otp = request.form['otp']
+        print("Entered OTP:", otp)  # Check the entered OTP
+        print("Expected OTP:", pyotp.TOTP(otp_secret).now())  # OTP expected by the server
         if pyotp.TOTP(otp_secret).verify(otp):
             session['authenticated'] = True
             flash("Two-factor authentication successful!")
             return redirect(url_for('index'))
         else:
             flash("Invalid OTP. Please try again.")
+
 
     return render_template('2fa.html')
 
