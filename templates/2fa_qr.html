@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Authentication - QR Code</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='2fa_qr.css') }}">
+</head>
+<body>
+    <h1>Two-Factor Authentication Setup</h1>
+    <p>Scan this QR code with your authenticator app:</p>
+
+    <!-- QR Kod Görüntüleme -->
+    <img src="{{ url_for('generate_qr') }}" alt="QR Code">
+
+    <form action="{{ url_for('two_factor_auth_qr') }}" method="post">
+        <button type="submit">Next</button>
+    </form>
+</body>
+</html>

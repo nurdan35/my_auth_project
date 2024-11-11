@@ -7,11 +7,12 @@
 </head>
 <body>
     <header>
+        aaaa
         <a href="{{ url_for('index') }}">Home</a>
         <a href="{{ url_for('add_blog') }}">Add Blog</a>
 
         {% if 'user_id' in session %}
-            <a href="{{ url_for('two_factor_auth') }}">2FA</a>
+            <a href="{{ url_for('two_factor_auth_qr') }}">2FA</a>
             <a href="{{ url_for('logout') }}">Logout</a>
         {% else %}
             <a href="{{ url_for('register') }}">Register</a>
